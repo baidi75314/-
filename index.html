@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>脑洞世界 - 创意无限</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6200ee;
+            --secondary-color: #03dac6;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --disabled-color: #cccccc;
+        }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: var(--primary-color);
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        form, .leaderboard {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            transition: border-color 0.3s ease;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #3700b3;
+        }
+        button:disabled {
+            background-color: var(--disabled-color);
+            cursor: not-allowed;
+        }
+        .idea {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s ease;
+        }
+        .idea:hover {
+            background-color: #f9f9f9;
+        }
+        .idea-title {
+            flex-grow: 1;
+            margin-right: 20px;
+        }
+        .reward {
+            color: var(--secondary-color);
+            font-weight: bold;
+            white-space: nowrap;
+            margin-right: 20px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>脑洞世界</h1>
+        
+        <form id="ideaForm">
+            <label for="title">创意标题</label>
+            <input type="text" id="title" required placeholder="输入你的创意标题">
+            
+            <label for="description">世界观描述</label>
+            <textarea id="description" rows="4" required placeholder="描述你的动画世界观"></textarea>
+            
+            <label for="reward">悬赏金额（元）</label>
+            <input type="number" id="reward" min="0" required placeholder="输入悬赏金额">
+            
+            <label for="contact">联系方式</label>
+            <input type="text" id="contact" required placeholder="输入你的联系方式（邮箱或电话）">
+            
+            <label for="groupChat">交流群信息（选填）</label>
+            <input type="text" id="groupChat" placeholder="输入交流群号码或链接">
+            
+            <button type="submit">发布创意</button>
+        </form>
+
+        <div class="leaderboard">
+            <h2>创意排行榜</h2>
+            <div id="ideas">
+                <!-- 排序后的创意将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modalTitle"></h3>
+            <p id="modalDescription"></p>
+            <p id="modalReward"></p>
+            <p id="modalContact"></p>
+            <p id="modalGroupChat"></p>
+            <div id="modalActions"></div>
+        </div>
+    </div>
+
+    <script>
+        let ideas = [];
+        let currentIdeaIndex = -1;
+
+        function renderIdeas() {
+            const ideasContainer = document.getElementById('ideas');
+            ideasContainer.innerHTML = '';
+            ideas.forEach((idea, index) => {
+                const ideaElement = document.createElement('div');
+                ideaElement.className = 'idea';
+                ideaElement.innerHTML = `
+                    <span class="idea-title">${idea.title}</span>
+                    <span class="reward">悬赏金额：${idea.reward} 元</span>
+                    <button onclick="showIdeaDetails(${index}, 'view')">查看详情</button>
+                    <button onclick="showIdeaDetails(${index}, 'join')">我想加入</button>
+                    <button onclick="showGroupChat(${index})" id="groupChatBtn${index}" ${idea.groupChat ? '' : 'disabled'}>交流群</button>
+                `;
+                ideasContainer.appendChild(ideaElement);
+            });
+        }
+
+        function showIdeaDetails(index, mode) {
+            currentIdeaIndex = index;
+            const idea = ideas[index];
+            document.getElementById('modalTitle').textContent = idea.title;
+            document.getElementById('modalDescription').textContent = idea.description;
+            document.getElementById('modalReward').textContent = `悬赏金额：${idea.reward} 元`;
+            document.getElementById('modalContact').textContent = `联系方式：${idea.contact}`;
+            document.getElementById('modalGroupChat').textContent = idea.groupChat ? `交流群：${idea.groupChat}` : '';
+            
+            const modalActions = document.getElementById('modalActions');
+            if (mode === 'join') {
+                modalActions.innerHTML = `
+                    <label for="additionalReward">追加悬赏金额（元）</label>
+                    <input type="number" id="additionalReward" min="0" required>
+                    <label for="newContact">您的联系方式</label>
+                    <input type="text" id="newContact" required>
+                    <button onclick="joinIdea()">确认加入</button>
+                `;
+            } else {
+                modalActions.innerHTML = '';
+            }
+            
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        function joinIdea() {
+            const additionalReward = parseInt(document.getElementById('additionalReward').value);
+            const newContact = document.getElementById('newContact').value;
+            
+            if (additionalReward > 0 && newContact) {
+                ideas[currentIdeaIndex].reward += additionalReward;
+                ideas[currentIdeaIndex].contact += `, ${newContact}`;
+                ideas.sort((a, b) => b.reward - a.reward);
+                renderIdeas();
+                document.getElementById('modal').style.display = 'none';
+                alert('您已成功加入该创意项目！');
+                // 启用交流群按钮
+                document.getElementById(`groupChatBtn${currentIdeaIndex}`).disabled = false;
+            } else {
+                alert('请输入有效的追加悬赏金额和联系方式。');
+            }
+        }
+
+        function showGroupChat(index) {
+            const idea = ideas[index];
+            if (idea.groupChat) {
+                alert(`交流群信息：${idea.groupChat}`);
+            } else {
+                alert('该项目暂未设置交流群。');
+            }
+        }
+
+        document.getElementById('ideaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const reward = parseInt(document.getElementById('reward').value);
+            const contact = document.getElementById('contact').value;
+            const groupChat = document.getElementById('groupChat').value;
+            
+            ideas.push({ title, description, reward, contact, groupChat });
+            
+            ideas.sort((a, b) => b.reward - a.reward);
+            
+            renderIdeas();
+            
+            this.reset();
+        });
+
+        document.querySelector('.close').onclick = function() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('modal')) {
+                document.getElementById('modal').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
